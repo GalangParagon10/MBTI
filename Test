@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tes MBTI Anda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chosen Palette: Calm Harmony (Stone/Slate Neutrals with Emerald/Red Accents) -->
+    <!-- Application Structure Plan: A single-page application designed as an interactive MBTI test. It consists of three main screens: an initial personal information form, a welcome/introduction screen, the test question screen (where questions are presented one by one with radio button options), and a results screen displaying the calculated MBTI type. This sequential flow is chosen for clarity and user focus. User data and MBTI results are sent to a Google Sheet via Apps Script after test completion. The results screen includes options to retake the test or navigate to another linked quiz. -->
+    <!-- Visualization & Content Choices: The application uses basic HTML elements (divs, headings, paragraphs, buttons, radio inputs) for all content and interactions. No complex charts, SVG graphics, or external visual libraries are used to keep the application lightweight and focused on functionality. User progress is indicated by question numbering, and results are displayed as text with a list of suggested jobs. All core logic and state management are handled by Vanilla JavaScript. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #334155; /* slate-700 */
+        }
+        .container {
+            max-width: 48rem; /* max-w-2xl */
+        }
+        .card {
+            background-color: #ffffff;
+            padding: 2rem;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .btn-primary {
+            background-color: #475569; /* slate-700 */
+            color: #ffffff;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        }
+        .btn-primary:hover {
+            background-color: #334155; /* slate-800 */
+            transform: translateY(-1px);
+        }
+        .btn-secondary {
+            background-color: #64748b; /* slate-500 */
+            color: #ffffff;
+            font-weight: 700;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* rounded-lg */
+            transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        }
+        .btn-secondary:hover {
+            background-color: #475569; /* slate-600 */
+            transform: translateY(-1px);
+        }
+        input[type="radio"] {
+            margin-right: 0.5rem;
+            min-width: 1.25rem; /* Add min-width for consistent sizing */
+            min-height: 1.25rem; /* Add min-height for consistent sizing */
+        }
+        label {
+            display: flex;
+            align-items: flex-start; /* Align text to top if it wraps */
+            padding: 0.75rem;
+            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 0.5rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        label:hover {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        input[type="radio"]:checked + span {
+            font-weight: 600;
+            color: #0d9488; /* emerald-700 */
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+            border: 1px solid #cbd5e1; /* slate-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .error-message {
+            color: #ef4444; /* red-500 */
+            font-size: 0.875rem; /* text-sm */
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full container mx-auto">
+        
+        <!-- Personal Info Screen -->
+        <div id="personal-info-screen" class="card text-center">
+            <h1 class="text-3xl md:text-4xl font-bold mb-4">Selamat Datang di Tes MBTI</h1>
+            <p class="text-lg text-slate-600 mb-8">Mohon lengkapi data diri Anda sebelum memulai tes MBTI ini.</p>
+            <form id="info-form" class="text-left">
+                <label for="nama" class="block text-slate-700 text-sm font-bold mb-2">Nama:</label>
+                <input type="text" id="nama" class="input-field" placeholder="Masukkan nama lengkap Anda">
+                <div id="nama-error" class="error-message hidden">Nama wajib diisi.</div>
+
+                <label for="nomor-hp" class="block text-slate-700 text-sm font-bold mb-2">Nomor HP:</label>
+                <input type="tel" id="nomor-hp" class="input-field" placeholder="Contoh: 081234567890">
+                <div id="nomor-hp-error" class="error-message hidden">Nomor HP wajib diisi.</div>
+
+                <label for="email" class="block text-slate-700 text-sm font-bold mb-2">Email:</label>
+                <input type="email" id="email" class="input-field" placeholder="Contoh: nama@example.com">
+                <div id="email-error" class="error-message hidden">Email wajib diisi dan formatnya benar.</div>
+
+                <label for="domisili" class="block text-slate-700 text-sm font-bold mb-2">Domisili:</label>
+                <input type="text" id="domisili" class="input-field" placeholder="Contoh: Jakarta">
+                <div id="domisili-error" class="error-message hidden">Domisili wajib diisi.</div>
+
+                <label for="umur" class="block text-slate-700 text-sm font-bold mb-2">Umur:</label>
+                <input type="number" id="umur" class="input-field" placeholder="Masukkan umur Anda" min="1" max="120">
+                <div id="umur-error" class="error-message hidden">Umur wajib diisi dan harus angka positif.</div>
+
+                <label for="jenis-kelamin" class="block text-slate-700 text-sm font-bold mb-2">Jenis Kelamin:</label>
+                <select id="jenis-kelamin" class="input-field">
+                    <option value="">Pilih Jenis Kelamin</option>
+                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Perempuan">Perempuan</option>
+                </select>
+                <div id="jenis-kelamin-error" class="error-message hidden">Jenis Kelamin wajib dipilih.</div>
+
+                <button type="submit" id="submit-info-btn" class="btn-primary w-full mt-6">Lanjutkan ke Tes</button>
+            </form>
+        </div>
+
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="card text-center hidden">
+            <h1 class="text-3xl md:text-4xl font-bold mb-4">Selamat Datang di Tes MBTI</h1>
+            <p class="text-lg md:text-xl text-slate-600 mb-8">Yuk isi tes MBTI-nya! Tenang aja, ini bukan ujian kok 😄<br>Jawab sejujur mungkin ya, biar hasilnya benar-benar mencerminkan kamu.</p>
+            <button id="start-test-btn" class="btn-primary">Mulai Tes</button>
+        </div>
+
+        <!-- Quiz Screen -->
+        <div id="quiz-screen" class="card hidden">
+            <div id="progress-area" class="text-sm text-slate-500 mb-4">
+                Soal <span id="current-question-num">1</span> dari <span id="total-questions-num"></span>
+            </div>
+            <h2 id="question-text" class="text-xl md:text-2xl font-semibold mb-6"></h2>
+            <div id="options-container" class="space-y-3">
+                <!-- Options will be loaded here by JavaScript -->
+            </div>
+            <div class="mt-8 flex justify-end">
+                <button id="next-question-btn" class="btn-primary" disabled>Selanjutnya</button>
+            </div>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="card text-center hidden">
+            <h1 class="text-3xl md:text-4xl font-bold mb-4">Hasil Tes MBTI Anda:</h1>
+            <div class="p-6 bg-slate-50 rounded-lg mb-8">
+                <p class="text-xl text-slate-600 mb-2">Tipe Kepribadian Anda:</p>
+                <p id="mbti-type" class="text-6xl font-extrabold text-emerald-700 mb-4">____</p>
+                <p id="mbti-description" class="text-slate-700 text-lg"></p>
+                <h3 class="text-xl font-semibold mt-6 mb-2 text-slate-700">Saran Pekerjaan yang Cocok:</h3>
+                <ul id="suggested-jobs-list" class="list-disc list-inside text-slate-600 text-left mx-auto max-w-sm md:max-w-md">
+                    <!-- Jobs will be loaded here -->
+                </ul>
+            </div>
+            <p class="text-slate-600 mb-4">ingin quiz lain?</p>
+            <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 justify-center">
+                <a href="https://lynk.id/galangparagon" target="_blank" rel="noopener noreferrer" class="btn-primary text-center flex items-center justify-center">MAU LAGI</a>
+                <button id="retake-test-btn" class="btn-secondary">Ulangi Tes Ini</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // MBTI Questions - 24 questions, 6 for each dimension (E/I, S/N, T/F, J/P)
+        // Each question has two options, each contributing to one specific MBTI preference.
+        const questions = [
+            // E/I (Extraversion/Introversion) - 6 questions
+            {
+                question: "Ketika Anda perlu mengisi ulang energi, Anda cenderung...",
+                options: [
+                    { text: "Menghabiskan waktu dengan banyak orang atau di acara sosial.", type: "E" },
+                    { text: "Menghabiskan waktu sendirian atau dengan beberapa teman dekat.", type: "I" }
+                ]
+            },
+            {
+                question: "Di pesta, Anda cenderung...",
+                options: [
+                    { text: "Mendekati orang baru dan berinteraksi secara luas.", type: "E" },
+                    { text: "Berbicara dengan beberapa orang yang sudah dikenal baik.", type: "I" }
+                ]
+            },
+            {
+                question: "Ketika ada ide baru, reaksi pertama Anda adalah...",
+                options: [
+                    { text: "Langsung berbagi dan mendiskusikannya dengan orang lain.", type: "E" },
+                    { text: "Memikirkannya sendiri dulu secara mendalam sebelum berbagi.", type: "I" }
+                ]
+            },
+            {
+                question: "Anda lebih suka pekerjaan yang melibatkan...",
+                options: [
+                    { text: "Kolaborasi tim yang intens dan interaksi konstan.", type: "E" },
+                    { text: "Pekerjaan independen dengan fokus mendalam pada tugas.", type: "I" }
+                ]
+            },
+            {
+                question: "Saat stres atau tertekan, Anda cenderung...",
+                options: [
+                    { text: "Mencari teman untuk bicara dan mendapatkan dukungan.", type: "E" },
+                    { text: "Menarik diri untuk merenung dan mencari solusi secara internal.", type: "I" }
+                ]
+            },
+            {
+                question: "Orang lain sering mendeskripsikan Anda sebagai orang yang...",
+                options: [
+                    { text: "Blak-blakan, mudah bergaul, dan ekspresif.", type: "E" },
+                    { text: "Pendiam, reflektif, dan suka mengamati.", type: "I" }
+                ]
+            },
+            // S/N (Sensing/Intuition) - 6 questions
+            {
+                question: "Saat belajar hal baru, Anda lebih suka...",
+                options: [
+                    { text: "Contoh praktis, detail konkret, dan pengalaman langsung.", type: "S" },
+                    { text: "Teori, konsep besar, dan bagaimana semuanya terhubung secara abstrak.", type: "N" }
+                ]
+            },
+            {
+                question: "Anda cenderung lebih memperhatikan...",
+                options: [
+                    { text: "Apa yang terjadi saat ini, fakta, dan realitas yang dapat diamati.", type: "S" },
+                    { text: "Apa yang mungkin terjadi di masa depan, pola, dan makna tersembunyi.", type: "N" }
+                ]
+            },
+            {
+                question: "Ketika bercerita, Anda lebih suka...",
+                options: [
+                    { text: "Menyampaikan detail urutan kejadian secara akurat dan jelas.", type: "S" },
+                    { text: "Menjelaskan makna, implikasi, atau pesan di balik cerita.", type: "N" }
+                ]
+            },
+            {
+                question: "Dalam pekerjaan atau hobi, Anda menghargai...",
+                options: [
+                    { text: "Pengalaman yang terbukti, metode yang sudah standar, dan solusi yang realistis.", type: "S" },
+                    { text: "Ide inovatif, pendekatan baru, dan kemungkinan yang belum dijelajahi.", type: "N" }
+                ]
+            },
+            {
+                question: "Anda lebih tertarik pada...",
+                options: [
+                    { text: "Realitas yang dapat diamati, apa yang jelas dan nyata di sekitar Anda.", type: "S" },
+                    { text: "Kemungkinan dan potensi tersembunyi, serta inspirasi yang tak terbatas.", type: "N" }
+                ]
+            },
+            {
+                question: "Anda sering digambarkan sebagai orang yang...",
+                options: [
+                    { text: "Realistis, praktis, dan membumi.", type: "S" },
+                    { text: "Imajinatif, visioner, dan berwawasan luas.", type: "N" }
+                ]
+            },
+            // T/F (Thinking/Feeling) - 6 questions
+            {
+                question: "Saat membuat keputusan penting, Anda mendasarkannya pada...",
+                options: [
+                    { text: "Logika, analisis objektif, dan konsekuensi rasional.", type: "T" },
+                    { text: "Nilai-nilai pribadi, harmoni, dan dampak pada orang lain.", type: "F" }
+                ]
+            },
+            {
+                question: "Dalam konflik atau perbedaan pendapat, Anda lebih fokus pada...",
+                options: [
+                    { text: "Mencari solusi yang logis, adil, dan konsisten.", type: "T" },
+                    { text: "Menjaga keharmonisan hubungan dan memahami perasaan semua pihak.", type: "F" }
+                ]
+            },
+            {
+                question: "Anda cenderung memberikan kritik atau umpan balik yang...",
+                options: [
+                    { text: "Jujur, langsung, dan berdasarkan fakta yang ada.", type: "T" },
+                    { text: "Mempertimbangkan perasaan orang lain dan disampaikan dengan empati.", type: "F" }
+                ]
+            },
+            {
+                question: "Pekerjaan atau tugas ideal bagi Anda adalah yang...",
+                options: [
+                    { text: "Menuntut pemikiran analitis, pemecahan masalah, dan objektivitas.", type: "T" },
+                    { text: "Melibatkan dukungan emosional, membangun hubungan, atau membantu orang lain.", type: "F" }
+                ]
+            },
+            {
+                question: "Anda lebih suka dipuji karena...",
+                options: [
+                    { text: "Kecerdasan, kompetensi, dan kemampuan Anda dalam memecahkan masalah.", type: "T" },
+                    { text: "Kebaikan hati, empati, dan kemampuan Anda untuk membuat orang lain merasa nyaman.", type: "F" }
+                ]
+            },
+            {
+                question: "Ketika dihadapkan pada masalah yang kompleks, Anda...",
+                options: [
+                    { text: "Menganalisis pro dan kontra secara rasional, mencari kebenaran yang objektif.", type: "T" },
+                    { text: "Mempertimbangkan bagaimana perasaan semua orang yang terlibat dan dampaknya pada hubungan.", type: "F" }
+                ]
+            },
+            // J/P (Judging/Perceiving) - 6 questions
+            {
+                question: "Anda merasa paling nyaman saat hidup dengan...",
+                options: [
+                    { text: "Rencana yang terstruktur, keputusan yang sudah dibuat, dan jadwal yang jelas.", type: "J" },
+                    { text: "Spontanitas, fleksibilitas, dan membiarkan pilihan tetap terbuka.", type: "P" }
+                ]
+            },
+            {
+                question: "Ketika memulai proyek atau tugas, Anda lebih suka...",
+                options: [
+                    { text: "Menyusun jadwal, daftar tugas, dan langkah-langkah detail terlebih dahulu.", type: "J" },
+                    { text: "Langsung memulai dan menyusun rencana saat berjalan, beradaptasi seiring waktu.", type: "P" }
+                ]
+            },
+            {
+                question: "Ruang kerja atau lemari Anda cenderung...",
+                options: [
+                    { text: "Rapi, terorganisir, dan semuanya memiliki tempatnya sendiri.", type: "J" },
+                    { text: "Mungkin terlihat berantakan, tetapi Anda tahu persis di mana semua barang berada.", type: "P" }
+                ]
+            },
+            {
+                question: "Batas waktu (deadline) bagi Anda adalah...",
+                options: [
+                    { text: "Sesuatu yang harus dipatuhi dengan ketat dan diselesaikan tepat waktu.", type: "J" },
+                    { text: "Sesuatu yang fleksibel, bisa disesuaikan atau diperpanjang jika diperlukan.", type: "P" }
+                ]
+            },
+            {
+                question: "Anda lebih suka liburan yang...",
+                options: [
+                    { text: "Direncanakan dengan detail jauh hari sebelumnya.", type: "J" },
+                    { text: "Diputuskan secara spontan, mendadak, dan fleksibel.", type: "P" }
+                ]
+            },
+            {
+                question: "Orang lain sering menyebut Anda sebagai orang yang...",
+                options: [
+                    { text: "Teratur, terencana, dan tegas.", type: "J" },
+                    { text: "Adaptif, fleksibel, dan spontan.", type: "P" }
+                ]
+            }
+        ];
+
+        // MBTI descriptions and suggested jobs
+        const mbtiDescriptions = {
+            "ISTJ": {
+                description: "Praktis, faktual, bertanggung jawab, dan dapat diandalkan. Mereka menyukai keteraturan dan struktur.",
+                suggestedJobs: ["Akuntan", "Auditor", "Administrator", "Analis Data", "Insinyur", "Polisi", "Manajer Operasional"]
+            },
+            "ISFJ": {
+                description: "Hangat, bertanggung jawab, teliti, dan setia. Mereka berdedikasi untuk membantu orang lain.",
+                suggestedJobs: ["Perawat", "Guru", "Pekerja Sosial", "Desainer Interior", "Konselor", "Pustakawan", "Asisten Administrasi"]
+            },
+            "INFJ": {
+                description: "Intuitif, idealis, terorganisir, dan berwawasan. Mereka berjuang untuk makna dan tujuan.",
+                suggestedJobs: ["Penulis", "Psikolog", "Konselor", "Guru (bidang humaniora)", "Seniman", "Pekerja Nirlaba", "Spesialis SDM"]
+            },
+            "INTJ": {
+                description: "Inovatif, strategis, logis, dan mandiri. Mereka merencanakan dengan cermat untuk masa depan.",
+                suggestedJobs: ["Ilmuwan", "Insinyur", "Arsitek", "Analis Sistem", "Pengembang Perangkat Lunak", "Peneliti", "Ahli Strategi Bisnis"]
+            },
+            "ISTP": {
+                description: "Logis, praktis, spontan, dan pengamat. Mereka suka memahami cara kerja sesuatu.",
+                suggestedJobs: ["Mekanik", "Teknisi", "Pilot", "Programmer", "Ahli Forensik", "Ahli Bedah", "Desainer Produk Industri"]
+            },
+            "ISFP": {
+                description: "Sensitif, artistik, ramah, dan mandiri. Mereka menghargai kebebasan dan pengalaman baru.",
+                suggestedJobs: ["Seniman", "Desainer Grafis", "Musisi", "Konselor", "Terapis", "Penulis", "Pustakawan Seni"]
+            },
+            "INFP": {
+                description: "Kreatif, idealis, fleksibel, dan penuh empati. Mereka mencari makna dan tujuan hidup.",
+                suggestedJobs: ["Penulis", "Seniman", "Konselor", "Psikolog", "Guru (bidang seni/bahasa)", "Pekerja Sosial", "Desainer Konten"]
+            },
+            "INTP": {
+                description: "Logis, analitis, inovatif, dan mandiri. Mereka menikmati memecahkan masalah kompleks.",
+                suggestedJobs: ["Ilmuwan Komputer", "Peneliti", "Profesor", "Filsuf", "Arsitek Perangkat Lunak", "Analis Sistem", "Ahli Teori"]
+            },
+            "ESTP": {
+                description: "Energik, realistis, spontan, dan berorientasi pada tindakan. Mereka suka beradaptasi dengan lingkungan.",
+                suggestedJobs: ["Wirausahawan", "Sales", "Pemasar", "Negosiator", "Atlet", "Pemadam Kebakaran", "Polisi", "Pialang Saham"]
+            },
+            "ESFP": {
+                description: "Ramah, antusias, spontan, dan suka bersenang-senang. Mereka menikmati menjadi pusat perhatian.",
+                suggestedJobs: ["Aktor", "Entertainer", "Pemasar", "Penjual", "Pemandu Wisata", "Event Organizer", "Guru Tari/Musik"]
+            },
+            "ENFP": {
+                description: "Antusias, kreatif, fleksibel, dan berwawasan. Mereka suka mengeksplorasi ide-ide baru.",
+                suggestedJobs: ["Pemasar", "Jurnalis", "Konsultan", "Pelatih", "Wirausahawan", "Seniman", "Spesialis Komunikasi"]
+            },
+            "ENTP": {
+                description: "Cerdas, inovatif, berdebat, dan mandiri. Mereka menikmati tantangan intelektual.",
+                suggestedJobs: ["Pengacara", "Wirausahawan", "Konsultan", "Ilmuwan", "Penemu", "Profesor", "Pengembang Produk"]
+            },
+            "ESTJ": {
+                description: "Praktis, logis, terorganisir, dan tegas. Mereka suka memimpin dan mengatur.",
+                suggestedJobs: ["Manajer", "Administrator", "Pengawas", "Pejabat Militer", "Pemimpin Proyek", "Direktur", "Pengacara"]
+            },
+            "ESFJ": {
+                description: "Hangat, ramah, bertanggung jawab, dan kooperatif. Mereka menghargai harmoni sosial.",
+                suggestedJobs: ["Guru", "Perawat", "Konselor", "Pekerja Sosial", "Manajer SDM", "Penjual", "Koordinator Acara"]
+            },
+            "ENFJ": {
+                description: "Karisma, idealis, persuasif, dan berorientasi pada orang. Mereka menginspirasi orang lain.",
+                suggestedJobs: ["Guru", "Konselor", "Pekerja Sosial", "Pemimpin Agama", "Politikus", "Konsultan", "Pembicara Motivasi"]
+            },
+            "ENTJ": {
+                description: "Pemimpin alami, strategis, efisien, dan tegas. Mereka suka mengorganisir orang dan proyek.",
+                suggestedJobs: ["CEO", "Manajer Proyek", "Pengacara", "Konsultan Bisnis", "Wirausahawan", "Eksekutif", "Ahli Strategi Perusahaan"]
+            }
+        };
+
+        // DOM Elements
+        const personalInfoScreen = document.getElementById('personal-info-screen');
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultsScreen = document.getElementById('results-screen');
+
+        const infoForm = document.getElementById('info-form');
+        const submitInfoBtn = document.getElementById('submit-info-btn');
+        const startTestBtn = document.getElementById('start-test-btn');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+        const mauLagiBtn = document.getElementById('mau-lagi-btn');
+        const retakeTestBtn = document.getElementById('retake-test-btn');
+
+        const namaInput = document.getElementById('nama');
+        const nomorHpInput = document.getElementById('nomor-hp');
+        const emailInput = document.getElementById('email');
+        const domisiliInput = document.getElementById('domisili');
+        const umurInput = document.getElementById('umur');
+        const jenisKelaminSelect = document.getElementById('jenis-kelamin');
+
+        const namaError = document.getElementById('nama-error');
+        const nomorHpError = document.getElementById('nomor-hp-error');
+        const emailError = document.getElementById('email-error');
+        const domisiliError = document.getElementById('domisili-error');
+        const umurError = document.getElementById('umur-error');
+        const jenisKelaminError = document.getElementById('jenis-kelamin-error');
+
+        const currentQuestionNumSpan = document.getElementById('current-question-num');
+        const totalQuestionsNumSpan = document.getElementById('total-questions-num');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const mbtiTypeDisplay = document.getElementById('mbti-type');
+        const mbtiDescriptionDisplay = document.getElementById('mbti-description');
+        const suggestedJobsList = document.getElementById('suggested-jobs-list');
+
+        let currentQuestionIndex = 0;
+        let scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+        let shuffledQuestions = [];
+        let userData = {}; // To store personal info and MBTI results
+
+        // Google Apps Script URL (REPLACE WITH YOUR ACTUAL DEPLOYED URL from Google Apps Script)
+        const GOOGLE_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyhw-70wkou0yhnh78Ghv4yj8xYBu1a9ELQeT44oQVS6JHI4CayA1MAIdVO6nknQf7j/exec'; 
+        // Example: 'https://script.google.com/macros/s/AKfycbz.../exec'
+
+        // Function to send data to Google Sheet via Apps Script
+        async function sendUserDataToSheet(data) {
+            try {
+                const response = await fetch(GOOGLE_APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8', 
+                    },
+                    body: JSON.stringify(data)
+                });
+                console.log('Data sedang dikirim ke Google Sheet. Periksa Google Sheet Anda.');
+            } catch (error) {
+                console.error('Ada masalah saat mengirim data ke Google Sheet:', error);
+            }
+        }
+
+        // Form Validation Function
+        function validateForm() {
+            let isValid = true;
+            // Reset error messages
+            namaError.classList.add('hidden');
+            nomorHpError.classList.add('hidden');
+            emailError.classList.add('hidden');
+            domisiliError.classList.add('hidden');
+            umurError.classList.add('hidden');
+            jenisKelaminError.classList.add('hidden');
+
+            if (namaInput.value.trim() === '') { namaError.classList.remove('hidden'); isValid = false; }
+            if (nomorHpInput.value.trim() === '') { nomorHpError.classList.remove('hidden'); isValid = false; }
+            // Basic email validation
+            if (emailInput.value.trim() === '' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput.value.trim())) { emailError.classList.remove('hidden'); isValid = false; }
+            if (domisiliInput.value.trim() === '') { domisiliError.classList.remove('hidden'); isValid = false; }
+            if (umurInput.value.trim() === '' || isNaN(umurInput.value) || parseInt(umurInput.value) <= 0) { umurError.classList.remove('hidden'); isValid = false; }
+            if (jenisKelaminSelect.value === '') { jenisKelaminError.classList.remove('hidden'); isValid = false; }
+            
+            return isValid;
+        }
+
+        // Initialize Test (after personal info is submitted)
+        function initializeTest() {
+            currentQuestionIndex = 0;
+            scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+            // Optional: Shuffle questions for variety, but keep for consistency in this example
+            // shuffledQuestions = shuffleArray([...questions]); 
+            shuffledQuestions = [...questions]; 
+            
+            totalQuestionsNumSpan.textContent = shuffledQuestions.length;
+            welcomeScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            nextQuestionBtn.disabled = true; // Disable next button initially
+            showQuestion();
+        }
+
+        // Display current question and options
+        function showQuestion() {
+            const question = shuffledQuestions[currentQuestionIndex];
+            currentQuestionNumSpan.textContent = currentQuestionIndex + 1;
+            questionText.textContent = question.question;
+            optionsContainer.innerHTML = ''; // Clear previous options
+            nextQuestionBtn.disabled = true; // Disable next button for new question
+
+            question.options.forEach((option, index) => {
+                const radioId = `q${currentQuestionIndex}-option${index}`;
+                const label = document.createElement('label');
+                label.setAttribute('for', radioId);
+
+                const radioInput = document.createElement('input');
+                radioInput.type = 'radio';
+                radioInput.name = `question-${currentQuestionIndex}`;
+                radioInput.id = radioId;
+                radioInput.value = option.type;
+                radioInput.classList.add('w-5', 'h-5', 'mt-1'); // Adjusted alignment for flex-start label
+                
+                // Enable next button when an option is selected
+                radioInput.addEventListener('change', () => {
+                    nextQuestionBtn.disabled = false;
+                });
+
+                const spanText = document.createElement('span');
+                spanText.textContent = option.text;
+                spanText.classList.add('text-lg', 'text-slate-700', 'ml-2'); // Add ml-2 for spacing
+
+                label.appendChild(radioInput);
+                label.appendChild(spanText);
+                optionsContainer.appendChild(label);
+            });
+        }
+
+        // Process answer and move to next question or results
+        function nextQuestion() {
+            const selectedOption = document.querySelector(`input[name="question-${currentQuestionIndex}"]:checked`);
+            if (selectedOption) {
+                const type = selectedOption.value;
+                scores[type]++; // Increment score for the selected type
+            } else {
+                alert("Mohon pilih jawaban Anda sebelum melanjutkan.");
+                return;
+            }
+
+            currentQuestionIndex++;
+            if (currentQuestionIndex < shuffledQuestions.length) {
+                showQuestion();
+            } else {
+                displayResults();
+            }
+        }
+
+        // Calculate and display MBTI results
+        function displayResults() {
+            quizScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+
+            let mbtiType = "";
+            mbtiType += (scores.E >= scores.I) ? "E" : "I"; // Default to E if tie
+            mbtiType += (scores.S >= scores.N) ? "S" : "N"; // Default to S if tie
+            mbtiType += (scores.T >= scores.F) ? "T" : "F"; // Default to T if tie
+            mbtiType += (scores.J >= scores.P) ? "J" : "P"; // Default to J if tie
+
+            const descriptionData = mbtiDescriptions[mbtiType] || { description: "Deskripsi tidak tersedia untuk tipe ini.", suggestedJobs: ["Saran pekerjaan tidak tersedia."] };
+
+            mbtiTypeDisplay.textContent = mbtiType;
+            mbtiDescriptionDisplay.textContent = descriptionData.description;
+
+            suggestedJobsList.innerHTML = ''; // Clear previous jobs
+            if (descriptionData.suggestedJobs && descriptionData.suggestedJobs.length > 0) {
+                descriptionData.suggestedJobs.forEach(job => {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = job;
+                    suggestedJobsList.appendChild(listItem);
+                });
+            } else {
+                const listItem = document.createElement('li');
+                listItem.textContent = "Saran pekerjaan tidak tersedia.";
+                suggestedJobsList.appendChild(listItem);
+            }
+
+            // Prepare data for Google Sheet submission
+            userData.mbtiType = mbtiType;
+            userData.mbtiDescription = descriptionData.description;
+            // Join suggestedJobs array into a single string for easier storage in one sheet cell
+            userData.suggestedJobs = descriptionData.suggestedJobs.join('; '); 
+            
+            // Send all collected data to Google Sheet
+            sendUserDataToSheet(userData);
+        }
+
+        // --- Event Listeners ---
+
+        // Handle personal info form submission
+        infoForm.addEventListener('submit', (e) => {
+            e.preventDefault(); // Prevent default form submission
+            if (validateForm()) {
+                // Store personal data
+                userData = {
+                    nama: namaInput.value.trim(),
+                    nomorHp: nomorHpInput.value.trim(),
+                    email: emailInput.value.trim(),
+                    domisili: domisiliInput.value.trim(),
+                    umur: parseInt(umurInput.value),
+                    jenisKelamin: jenisKelaminSelect.value
+                };
+                personalInfoScreen.classList.add('hidden');
+                welcomeScreen.classList.remove('hidden'); // Go to welcome screen
+            }
+        });
+
+        // Start test from welcome screen
+        startTestBtn.addEventListener('click', initializeTest);
+
+        // Move to next question
+        nextQuestionBtn.addEventListener('click', nextQuestion);
+
+        // Navigate to "MAU LAGI" link
+        mauLagiBtn.addEventListener('click', () => {
+            window.location.href = 'https://lynk.id/galangparagon'; // Navigate to external link
+        });
+
+        // Retake test (go back to personal info screen and clear form)
+        retakeTestBtn.addEventListener('click', () => {
+            resultsScreen.classList.add('hidden');
+            personalInfoScreen.classList.remove('hidden'); // Go back to personal info form
+            infoForm.reset(); // Clear all form inputs
+            // Also clear error messages
+            namaError.classList.add('hidden');
+            nomorHpError.classList.add('hidden');
+            emailError.classList.add('hidden');
+            domisiliError.classList.add('hidden');
+            umurError.classList.add('hidden');
+            jenisKelaminError.classList.add('hidden');
+        });
+
+        // --- Initial Load ---
+        // Ensure personal info screen is the first thing shown
+        personalInfoScreen.classList.remove('hidden');
+        welcomeScreen.classList.add('hidden');
+        quizScreen.classList.add('hidden');
+        resultsScreen.classList.add('hidden');
+
+    </script>
+</body>
+</html>
